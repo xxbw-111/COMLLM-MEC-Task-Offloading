@@ -165,9 +165,8 @@ MODEL_NAMES = [
 ]
 
 Then run:
-```bash
 python analyze_all.py
-```
+
 The report includes average latency, task drop rate, performance ratio, and Jain's load balancing index.
 
 # COMLLM：用于MEC任务卸载的多轮推理大语言模型
@@ -326,7 +325,5 @@ MODEL_NAMES = [
 ]
 
 然后运行：
-```bash
 python analyze_all.py
-```
 脚本会输出平均延迟、任务丢弃率、性能比和 Jain 负载均衡指数。
