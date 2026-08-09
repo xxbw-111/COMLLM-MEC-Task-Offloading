@@ -163,11 +163,13 @@ MODEL_NAMES = [
     "comllm_model_7B",
     "random_policy",
 ]
-
+```
 Then run:
+```bash
 python analyze_all.py
-
+```
 The report includes average latency, task drop rate, performance ratio, and Jain's load balancing index.
+
 
 # COMLLM：用于MEC任务卸载的多轮推理大语言模型
 本仓库包含COMLLM的训练和评估脚本。COMLLM是一个基于大语言模型（LLM）的移动边缘计算（MEC）任务卸载框架。其核心思想是将动态MEC状态序列化为自然语言提示，通过监督微调（SFT）对模型进行热启动，然后使用GRPO进一步优化策略。完整版的COMLLM额外引入了前瞻协同仿真（LACS），用于估计当前卸载动作对未来队列的影响。
@@ -323,7 +325,9 @@ MODEL_NAMES = [
     "comllm_model_7B",
     "random_policy",
 ]
-
+```
 然后运行：
+```bash
 python analyze_all.py
+```
 脚本会输出平均延迟、任务丢弃率、性能比和 Jain 负载均衡指数。
