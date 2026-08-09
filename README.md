@@ -152,14 +152,23 @@ python evaluate_random.py \
 
 ### 7. Analyze Results
 
+Before running the analysis script, edit the configuration variables at the top of `analyze_all.py`:
+
+```python
+RESULTS_DIR = "results/default"
+
+MODEL_NAMES = [
+    "sft_model_7B",
+    "grpo_model_7B",
+    "comllm_model_7B",
+    "random_policy",
+]
+
+Then run:
 ```bash
-python analyze_all.py \
-  --results-dir results/default \
-  --models sft_model_7B grpo_model_7B comllm_model_7B random_policy
+python analyze_all.py
 ```
-
-
-
+The report includes average latency, task drop rate, performance ratio, and Jain's load balancing index.
 
 # COMLLM：用于MEC任务卸载的多轮推理大语言模型
 本仓库包含COMLLM的训练和评估脚本。COMLLM是一个基于大语言模型（LLM）的移动边缘计算（MEC）任务卸载框架。其核心思想是将动态MEC状态序列化为自然语言提示，通过监督微调（SFT）对模型进行热启动，然后使用GRPO进一步优化策略。完整版的COMLLM额外引入了前瞻协同仿真（LACS），用于估计当前卸载动作对未来队列的影响。
@@ -167,9 +176,9 @@ python analyze_all.py \
 ## 方法概述
 COMLLM解决了传统MEC卸载方法的两个局限性：
 
-DRL策略通常依赖于固定维度的数值状态，因此当边缘服务器数量发生变化时，可能需要修改架构并重新训练。
+- DRL策略通常依赖于固定维度的数值状态，因此当边缘服务器数量发生变化时，可能需要修改架构并重新训练。
 
-仅使用SFT的LLM策略倾向于模仿单步最优标签，在队列耦合和突发流量的情况下容易变得短视。
+- 仅使用SFT的LLM策略倾向于模仿单步最优标签，在队列耦合和突发流量的情况下容易变得短视。
 
 流程如下：
 
@@ -185,31 +194,33 @@ DRL策略通常依赖于固定维度的数值状态，因此当边缘服务器�
 
 6. 执行推理，输出卸载策略
 
-
 ## 仓库结构
-文件	用途
-cost_calculator.py	解析MEC状态字符串，计算本地/边缘卸载延迟。同时包含LACS未来影响估计器。
-stf_7B.py	SFT训练入口。尽管文件名如此，基础模型路径是可配置的。
-grpo_new_7B.py	不使用LACS的GRPO训练，作为GRPO基线。
-comllm_train.py	使用LACS塑造奖励的COMLLM训练。
-all_sft_model.py	可选工具，用于将LoRA适配器合并到基础模型中。
-evaluate_model.py	在预留的JSON测试集上评估SFT/GRPO/COMLLM模型。
-evaluate_random.py	随机策略基线。
-analyze_all.py	汇总评估结果文件并报告指标。
-model_configs_example.json	多模型评估配置示例。
+
+| 文件 | 用途 |
+| --- | --- |
+| `cost_calculator.py` | 解析MEC状态字符串，计算本地/边缘卸载延迟。同时包含LACS未来影响估计器。 |
+| `stf_7B.py` | SFT训练入口。尽管文件名如此，基础模型路径是可配置的。 |
+| `grpo_new_7B.py` | 不使用LACS的GRPO训练，作为GRPO基线。 |
+| `comllm_train.py` | 使用LACS塑造奖励的COMLLM训练。 |
+| `all_sft_model.py` | 可选工具，用于将LoRA适配器合并到基础模型中。 |
+| `evaluate_model.py` | 在预留的JSON测试集上评估SFT/GRPO/COMLLM模型。 |
+| `evaluate_random.py` | 随机策略基线。 |
+| `analyze_all.py` | 汇总评估结果文件并报告指标。 |
+| `model_configs_example.json` | 多模型评估配置示例。 |
 
 ## 环境
+```bash
 pip install -r requirements.txt
-
+```
 
 ## 数据格式
 每个数据集文件是一个JSON或JSONL文件。每个样本应包含：
 
-instruction：任务指令。
+- instruction：任务指令。
 
-input：MEC状态字典。
+- input：MEC状态字典。
 
-output.action_name：目标决策字符串，例如本地执行或卸载到边缘服务器2。
+- output.action_name：目标决策字符串，例如本地执行或卸载到边缘服务器2。
 
 给出一个数据集示例
 
@@ -240,56 +251,82 @@ output.action_name：目标决策字符串，例如本地执行或卸载到边�
 ## 复现流程
 ### 1. 准备数据
 准备数据集：
-
+```bash
 data/sft_train.json
 data/grpo_train.json
 data/comllm_train.json
 data/test.json
+```
 最优标签应通过在所有可行动作上评估物理成本模型，并选择成本最低的动作来生成。
 
 ### 2. SFT训练
+```bash
 python stf_7B.py \
   --base-model-name /path/to/Qwen2.5-7B \
   --dataset-path data/sft_train.json \
   --output-dir outputs/qwen2.5-7b-sft
+```
 最终LoRA适配器保存在：
 outputs/qwen2.5-7b-sft/final_lora_adapter
 
 ### 3. （可选）合并SFT适配器
 GRPO脚本期望一个可作为基础模型加载的模型路径。如果您想要一个独立的SFT模型目录，请合并适配器：
+```bash
 python all_sft_model.py \
   --base-model-path /path/to/Qwen2.5-7B \
   --lora-adapter-path outputs/qwen2.5-7b-sft/final_lora_adapter \
   --output-dir outputs/qwen2.5-7b-sft-merged
+```
 
 ### 4. 训练GRPO基线
+```bash
 python grpo_new_7B.py \
   --sft-model-path outputs/qwen2.5-7b-sft-merged \
   --dataset-path data/grpo_train.json \
   --output-dir outputs/qwen2.5-7b-grpo
+```
 
 ### 5. 训练带LACS的COMLLM
+```bash
 python comllm_train.py \
   --sft-model-path outputs/qwen2.5-7b-sft-merged \
   --dataset-path data/grpo_train.json \
   --output-dir outputs/qwen2.5-7b-comllm \
   --lacs-weight 0.3
+```
 
 ### 6. 评估模型
 根据model_configs_example.json创建配置文件，然后运行：
+```bash
 python evaluate_model.py \
   --test-data-path data/test.json \
   --results-dir results/default \
   --model-config model_configs.json
+```
+
 评估随机基线：
+```bash
 python evaluate_random.py \
   --test-data-path data/test.json \
   --results-dir results/default \
   --seed 42
-
+```
 
 ### 7. 分析结果
-python analyze_all.py \
-  --results-dir results/default \
-  --models sft_model_7B grpo_model_7B comllm_model_7B random_policy
-报告包括平均延迟、任务丢弃率、性能比和Jain负载均衡指数。
+运行分析脚本前，请先修改 `analyze_all.py` 文件开头的配置变量：
+
+```python
+RESULTS_DIR = "results/default"
+
+MODEL_NAMES = [
+    "sft_model_7B",
+    "grpo_model_7B",
+    "comllm_model_7B",
+    "random_policy",
+]
+
+然后运行：
+```bash
+python analyze_all.py
+```
+脚本会输出平均延迟、任务丢弃率、性能比和 Jain 负载均衡指数。
